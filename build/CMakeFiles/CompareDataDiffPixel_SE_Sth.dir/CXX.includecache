@@ -1,0 +1,32 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/sth/CLionProjects/CompareDataDiffPixel_SE_Sth/main.cpp
+stdio.h
+-
+iostream
+-
+tuple
+-
+fstream
+-
+string
+-
+sstream
+-
+algorithm
+-
+cfloat
+-
+cmath
+-
+vector
+-
+assert.h
+-
+

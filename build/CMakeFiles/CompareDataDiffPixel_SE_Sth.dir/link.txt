@@ -1,0 +1,1 @@
+/bin/x86_64-linux-gnu-g++-9  -g   CMakeFiles/CompareDataDiffPixel_SE_Sth.dir/main.cpp.o  -o CompareDataDiffPixel_SE_Sth 
