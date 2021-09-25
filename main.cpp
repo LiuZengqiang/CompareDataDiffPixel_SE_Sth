@@ -45,31 +45,32 @@ int main(int arc, char** argv) {
 
     float receiver_height = 20.0;
     float receiver_width = 20.0;
-    float heliostat_area = 4.0f * 3.2f;
+    float heliostat_area = 8.0f * 6.4f;
 
     vector<int > distance;
-    for (int i = 200; i < 1200; i += 50) {
+    for (int i = 200; i <= 500; i += 50) {
         distance.push_back(i);
     }
-    string output_file_path_pre = "../Output/out_";
+    int normal = 0;
+    string output_file_path_pre = "../Output/Double/Normal_" + to_string(normal) + "/out_";
     string output_file_path_suf = ".csv";
     for (int dis : distance) {
-        string input_file_path_pre = "/home/sth/CLionProjects/SolarEnergy_Chier/OutputFiles/GroundTruth_6282/Altitude_90/Normal_1/Dis_" + to_string(dis) + "/";
+        string input_file_path_pre = "/home/sth/CLionProjects/SolarEnergy_Chier/OutputFiles/GroundTruth_6282_double_heliostat/Altitude_90/Normal_" + to_string(normal) + "/Dis_" + to_string(dis) + "/";
         string input_file_path_suf = "before_smooth_d_2048_r_128.csv";
 
         string output_file_path = output_file_path_pre + to_string(dis) + output_file_path_suf;
         done(origin_pixel, pixel_scale_factor, pixel_sizes, input_file_path_pre + input_file_path_suf, output_file_path, heliostat_area, receiver_height, receiver_width);
     }
 
-    string combine_output_path_pre = "../Output/out_all_";
+    string combine_output_path_pre = "../Output/Double/Normal_" + to_string(normal) + "/out_all_";
     string combine_output_path_suf = ".csv";
 
     string title = "dis_";
     // ----- 1. Calculate the compare result -----
     // 输入文件夹列表，每个文件夹输出一个结果(一个excel表格)
     // // ----- 2. Combine the compare results -----
-    vector<string> target = { "rms", "max", "r2", "sum", "rms_per_area", "total_energy_err", "abs_energy_err" };
-    vector<string> output_file_paths = { "../Output/out_200.csv", "../Output/out_500.csv","../Output/out_1000.csv" };
+    vector<string> target = { "rms", "peak_dif", "peak_shift_gt", "peak_shift_c", "rms", "r2", "rms_per_area","total_energy_result","total_energy_err", "total_energy_err_relative", "abs_energy_err" };
+    vector<string> output_file_paths;
     for (int dis : distance) {
         output_file_paths.push_back(output_file_path_pre + to_string(dis) + output_file_path_suf);
     }
@@ -80,10 +81,13 @@ int main(int arc, char** argv) {
     for (int dis : distance) {
         titles.push_back(title_pre + to_string(dis) + title_suf);
     }
+
     for (string t : target) {
         string combine_output_path = combine_output_path_pre + t + combine_output_path_suf;
         combineResults(output_file_paths, titles, t, combine_output_path);
     }
+
+    cout << endl;
     return 0;
 }
 
@@ -147,11 +151,31 @@ float getCoefficientOfDetermination(vector<vector<float>>& measure, vector<vecto
 void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<float>& pixel_sizes, string input_file_path, string output_file_path, float heliostat_area, float receiver_height, float receiver_width) {
 
     fstream output_file(output_file_path, fstream::out);
-
+    // 比较结果
+    // pixel_scale_factor: 像素缩放因子(2,3,4,5,...,)
+    // pixel_size:像素大小(0.02,0.03,...,)
+    // peak_dif: 峰值之差d
+    // peak_shift_gt: 峰值偏移,相对于ground truth 数据的peak val(sqrt(delta_x^2 + delta_y^2)) d
+    // peak_shift_c: 峰值偏移,相对于理论中心点(接收器中心点) d
+    // rms:原始的 rms=sqrt(sum((val_gt-val)^2)/(pixel count)) d
+    // ave:平均误差 sum(val_gt-val)/pixel_count d
+    // pixel:pixel count d
+    // r2: 相关系数 d
+    // rms_per_area: 相对rms = sqrt(sum((val_gt-val)^2)*receiver_size / helio_size) d
+    // total_energy_gt:
+    // total_energy_result:
+    // total_energy_err: 总能量之差 sum(val_gt)-sum(val) d
+    // total_energy_err_relative: 相对总能量之差 (sum(val_gt)-sum(val))/sum(val_gt) d
+    // abs_energy_err:总能量差和(轮廓之间的差体积) pixel_szie*(val_gt-val)
     output_file
-        << "pixel_scale_factor,pixel_size,max,sum,rms,ave,pixel,r2,rms_per_area,total_energy_err,abs_energy_err"
+        << "pixel_scale_factor,pixel_size,peak_dif,peak_shift_gt,peak_shift_c,rms,ave,pixel,r2,rms_per_area,total_energy_gt,total_energy_result,total_energy_err,total_energy_err_relative,abs_energy_err"
         << endl;
-    cout << "Ground truth file path:" << input_file_path << endl;
+
+
+    // output_file
+    //     << "pixel_scale_factor,pixel_size,max,sum,rms,ave,pixel,r2,rms_per_area,total_energy_err,abs_energy_err"
+    //     << endl;
+    cout << "HINT::Ground truth file path:" << input_file_path << endl;
 
     fstream ground_truth_file(input_file_path.c_str());
     if (!ground_truth_file.good()) {
@@ -163,35 +187,38 @@ void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<floa
     // get result data size (h,w)
     int ground_truth_row = ground_truth.size();
     int ground_truth_column = ground_truth[0].size();
-    float ground_truth_energy = 0.0f;
 
     float receiver_pixel_height = receiver_height / ground_truth_row;
     float receiver_pixel_width = receiver_width / ground_truth_column;
 
     float receiver_pixel_area = receiver_pixel_height * receiver_pixel_width;
 
-    float ground_truth_average = 0.0f;
-
+    // abs_energy
+    float max_dif, sum_dif, rms_dif, ave_dif, R2, rms_per_area, total_energy_err, abs_energy_err;
+    float total_energy_ground_truth = 0.0f;
+    float total_energy_result = 0.0f;
+    float peak_ground_truth = 0.0;
+    float peak_result = 0.0f;
+    float peak_diff = 0.0f;
+    pair<int, int> peak_pos_ground_truth = pair<int, int>(-1, -1);
+    pair<int, int> peak_pos_result = pair<int, int>(-1, -1);
+    pair<int, int> peak_pos_theory = pair<int, int>(ground_truth_column / 2, ground_truth_row / 2);
+    float peak_shift_gt = 0.0f;
+    float peak_shift_c = 0.0f;
+    int pixel = 0;
+    float total_energy_err_relative = 0.0f;
 
     for (int row = 0; row < ground_truth_row; row++) {
         for (int col = 0; col < ground_truth_column; col++) {
-            ground_truth_energy += (receiver_pixel_area * ground_truth[row][col]);
-            ground_truth_average += ground_truth[row][col];
+            total_energy_ground_truth += (receiver_pixel_area * ground_truth[row][col]);
+            if (peak_ground_truth < ground_truth[row][col]) {
+                peak_ground_truth = ground_truth[row][col];
+                peak_pos_ground_truth = pair<int, int>(col, row);
+            }
         }
     }
-
-    ground_truth_average /= (ground_truth_row * ground_truth_column);
-
-
-    // abs_energy
-    float max_dif, sum_dif, rms_dif, ave_dif, R2, rms_per_area, total_energy_err, abs_energy_err;
-    int pixel = 0;
-    float result_energy = 0.0f;
-
     for (int i = 0; i < pixel_sizes.size(); i++) {
-
-        cout << "HINT: pixel scale factor:" << pixel_scale_factors[i] << endl;
-
+        // cout << "HINT: pixel scale factor:" << pixel_scale_factors[i] << endl;
         // get max_rms and max_rms_per_area
         vector<vector<float>> result;
         fstream input_file(input_file_path);
@@ -200,10 +227,8 @@ void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<floa
             return;
         }
         result = getDataMatrix(input_file);
-
         // 得到放缩后的matrix
         result = getSubSampledMatrix(result, pixel_scale_factors[i], pixel_scale_factors[i]);
-
         int r = 0;
         string str;
         max_dif = -FLT_MAX;
@@ -214,7 +239,9 @@ void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<floa
         R2 = 0.0f;
         total_energy_err = 0.0f;
         abs_energy_err = 0.0f;
-        result_energy = 0.0f;
+        total_energy_err = 0.0f;
+        total_energy_err_relative = 0.0f;
+
         int result_row = result.size();
         int result_column = result[0].size();
         pixel = ground_truth_row * ground_truth_column;
@@ -234,26 +261,43 @@ void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<floa
                 rms_dif += (dif * dif);
                 max_dif = max(max_dif, dif);
                 sum_dif += dif;
-
                 abs_energy_err += (receiver_pixel_area * dif);
-                result_energy += receiver_pixel_area * result_val;
 
+                total_energy_result += receiver_pixel_area * result_val;
+                if (peak_result < result_val) {
+                    peak_result = result_val;
+                    peak_pos_result = pair<int, int>(col, row);
+                }
             }
         }
+
         rms_dif = sqrt(rms_dif / pixel);
-
         rms_per_area = rms_dif / sqrt(heliostat_area) * sqrt(receiver_width * receiver_height);
-
         ave_dif = sum_dif / pixel;
+
         R2 = getCoefficientOfDetermination(result, ground_truth);
+        total_energy_err = abs(total_energy_result - total_energy_ground_truth);
+        total_energy_err_relative = total_energy_err / total_energy_ground_truth;
 
+        peak_diff = peak_result - peak_ground_truth;
+        float dx = (peak_pos_result.first - peak_pos_ground_truth.first) * receiver_pixel_width;
+        float dy = (peak_pos_result.second - peak_pos_ground_truth.second) * receiver_pixel_height;
 
-        total_energy_err = abs(result_energy - ground_truth_energy);
+        peak_shift_gt = sqrt(dx * dx + dy * dy);
+        dx = (peak_pos_result.first - peak_pos_theory.first) * receiver_pixel_width;
+        dy = (peak_pos_result.second - peak_pos_theory.second) * receiver_pixel_height;
+        peak_shift_c = sqrt(dx * dx + dy * dy);
 
-        output_file << pixel_scale_factors[i] << "," << pixel_sizes[i] << ", " << max_dif << ", " << sum_dif << ", " << rms_dif << ", " << ave_dif << ", "
-            << pixel
-            << "," << R2 << "," << rms_per_area << "," << total_energy_err << ","
-            << abs_energy_err << endl;
+        output_file
+            << "pixel_scale_factor,pixel_size,peak_dif,peak_shift_gt,peak_shift_c,rms,ave,pixel,r2,rms_per_area,total_energy_gt,total_energy_result,total_energy_err,total_energy_err_relative,abs_energy_err"
+            << endl;
+
+        output_file << pixel_scale_factors[i] << "," << pixel_sizes[i] << peak_diff << "," << peak_shift_gt << "," << peak_shift_c << "," << rms_dif
+            << "," << ave_dif << "," << pixel << "," << R2 << "," << rms_per_area << "," << total_energy_ground_truth << "," << total_energy_result << "," << total_energy_err << "," << total_energy_err_relative << "," << abs_energy_err << endl;
+        // output_file << pixel_scale_factors[i] << "," << pixel_sizes[i] << ", " << max_dif << ", " << sum_dif << ", " << rms_dif << ", " << ave_dif << ", "
+        //     << pixel
+        //     << "," << R2 << "," << rms_per_area << "," << total_energy_err << ","
+        //     << abs_energy_err << endl;
     }
     output_file.close();
 }
@@ -291,7 +335,7 @@ void
 combineResults(vector<string>& input_file_lists, vector<string> titles, string target_title,
     string output_file_path) {
     int n = input_file_lists.size();
-    cout << "n:" << n << endl;
+    // cout << "n:" << n << endl;
     vector<stringstream> input_ss(n);
     int index = -1;
 
@@ -316,7 +360,7 @@ combineResults(vector<string>& input_file_lists, vector<string> titles, string t
             splitStr(strs[0], title_split, ",");
             for (int j = 0; j < title_split.size(); j++) {
                 if (title_split[j] == target_title) {
-                    cout << title_split[j] << endl;
+
                     index = j;
                     break;
                 }
@@ -326,17 +370,20 @@ combineResults(vector<string>& input_file_lists, vector<string> titles, string t
             } else {
                 cout << " index:" << index << " title:" << title_split[index];
             }
+            output_file << "pixel,";
             for (int j = 0; j < titles.size() - 1; j++) {
                 output_file << titles[j] << ",";
             }
             output_file << titles.back() << endl;
         } else {
             vector<float> values(input_ss.size(), 0.0f);
+            vector<float> v;
             for (int j = 0; j < input_ss.size(); j++) {
-                vector<float> v;
+
                 split(strs[j], v, ",");
                 values[j] = v[index];
             }
+            output_file << to_string(v[0] * 0.01f).substr(0, 4) << ",";
             for (int j = 0; j < values.size() - 1; j++) {
                 output_file << values[j] << ",";
             }
