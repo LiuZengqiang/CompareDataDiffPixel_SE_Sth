@@ -34,35 +34,60 @@ combineResults(vector<string>& input_file_lists, vector<string> titles, string t
 
 
 int main(int arc, char** argv) {
-    float origin_pixel = 0.01;
-    vector<int> pixel_scale_factor;
-    vector<float> pixel_sizes;
+    // cout << "test" << endl;
+    // test.open("F:/Data/Normal_1/Dis_100/before_smooth_d_2048_r_128.csv", ios::in);
 
-    for (int i = 2; i <= 20; i++) {
+    float origin_pixel = 0.01;
+    // 像素缩放系数 2,3,4,5,...,20,x
+    vector<int> pixel_scale_factor;
+    // 像素大小 0.02,0.03,...,0.20,0.01*x
+    vector<float> pixel_sizes;
+    // 初始化 像素设置
+    // 2000*2000 -> 20*20 ->100
+    for (int i = 2; i <= 100; i += 2) {
         pixel_scale_factor.push_back(i);
         pixel_sizes.push_back(origin_pixel * i);
     }
-
+    // 场景参数
     float receiver_height = 20.0;
     float receiver_width = 20.0;
-    float heliostat_area = 8.0f * 6.4f;
+    float heliostat_area = 4.0f * 3.2f;
 
-    vector<int > distance;
-    for (int i = 200; i <= 500; i += 50) {
-        distance.push_back(i);
-    }
-    int normal = 0;
-    string output_file_path_pre = "../Output/Double/Normal_" + to_string(normal) + "/out_";
+    // 定日镜 距离 参数
+    vector<int > distance = { 20 };
+    // for (int i = 20; i <= 100; i += 10) {
+    //     distance.push_back(i);
+    // }
+    // distance.push_back(120);
+    // distance.push_back(130);
+    // distance.push_back(150);
+    // distance.push_back(160);
+    // distance.push_back(170);
+    // distance.push_back(190);
+    // for (int i = 200; i <= 1200; i += 100) {
+    //     distance.push_back(i);
+    // }
+
+    // 镜面法向
+    int normal = 1;
+
+    // 输出文件路径
+    string output_file_path_pre = "../Output/Normal_" + to_string(normal) + "/out_";
     string output_file_path_suf = ".csv";
-    for (int dis : distance) {
-        string input_file_path_pre = "/home/sth/CLionProjects/SolarEnergy_Chier/OutputFiles/GroundTruth_6282_double_heliostat/Altitude_90/Normal_" + to_string(normal) + "/Dis_" + to_string(dis) + "/";
-        string input_file_path_suf = "before_smooth_d_2048_r_128.csv";
 
+    for (int dis : distance) {
+        string input_file_path_pre = "/home/sth/CLionProjects/SolarEnergy_Chier/OutputFiles/GroundTruth_6282/Altitude_90/Normal_" + to_string(normal) + "/Dis_" + to_string(dis) + "/";
+        // test.open("F:/Data/Normal_1/Dis_100/before_smooth_d_2048_r_128.csv", ios::in);
+
+        input_file_path_pre = "F:/Data/Normal_" + to_string(normal) + "/Dis_" + to_string(dis) + "/";
+        string input_file_path_suf = "before_smooth_d_2048_r_128.csv";
         string output_file_path = output_file_path_pre + to_string(dis) + output_file_path_suf;
-        done(origin_pixel, pixel_scale_factor, pixel_sizes, input_file_path_pre + input_file_path_suf, output_file_path, heliostat_area, receiver_height, receiver_width);
+
+        done(origin_pixel, pixel_scale_factor, pixel_sizes, input_file_path_pre + input_file_path_suf,
+            output_file_path, heliostat_area, receiver_height, receiver_width);
     }
 
-    string combine_output_path_pre = "../Output/Double/Normal_" + to_string(normal) + "/out_all_";
+    string combine_output_path_pre = "../Output/Normal_" + to_string(normal) + "/out_all_";
     string combine_output_path_suf = ".csv";
 
     string title = "dis_";
@@ -81,12 +106,11 @@ int main(int arc, char** argv) {
     for (int dis : distance) {
         titles.push_back(title_pre + to_string(dis) + title_suf);
     }
-
+    cout << "Combine Result:" << endl;
     for (string t : target) {
         string combine_output_path = combine_output_path_pre + t + combine_output_path_suf;
         combineResults(output_file_paths, titles, t, combine_output_path);
     }
-
     cout << endl;
     return 0;
 }
@@ -146,15 +170,15 @@ float getCoefficientOfDetermination(vector<vector<float>>& measure, vector<vecto
     }
     return 1.0f - SS_res / SS_tot;
 }
-// void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<float>& pixel_sizes, string input_file_path, string output_file_path, float heliostat_area, float receiver_height, float receiver_width);
 
+// void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<float>& pixel_sizes, string input_file_path, string output_file_path, float heliostat_area, float receiver_height, float receiver_width);
 void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<float>& pixel_sizes, string input_file_path, string output_file_path, float heliostat_area, float receiver_height, float receiver_width) {
 
     fstream output_file(output_file_path, fstream::out);
     // 比较结果
     // pixel_scale_factor: 像素缩放因子(2,3,4,5,...,)
     // pixel_size:像素大小(0.02,0.03,...,)
-    // peak_dif: 峰值之差d
+    // peak_dif: 峰值之差 d
     // peak_shift_gt: 峰值偏移,相对于ground truth 数据的peak val(sqrt(delta_x^2 + delta_y^2)) d
     // peak_shift_c: 峰值偏移,相对于理论中心点(接收器中心点) d
     // rms:原始的 rms=sqrt(sum((val_gt-val)^2)/(pixel count)) d
@@ -175,14 +199,15 @@ void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<floa
     // output_file
     //     << "pixel_scale_factor,pixel_size,max,sum,rms,ave,pixel,r2,rms_per_area,total_energy_err,abs_energy_err"
     //     << endl;
-    cout << "HINT::Ground truth file path:" << input_file_path << endl;
+    cout << "HINT::Input file path:" << input_file_path << endl;
 
-    fstream ground_truth_file(input_file_path.c_str());
+    fstream ground_truth_file(input_file_path, ios::in);
     if (!ground_truth_file.good()) {
-        cerr << "Ground truth file " << input_file_path << " opened fail." << endl;
+        cerr << "Input file " << input_file_path << " opened fail." << endl;
         return;
     }
     vector<vector<float>> ground_truth = getDataMatrix(ground_truth_file);
+    ground_truth_file.close();
 
     // get result data size (h,w)
     int ground_truth_row = ground_truth.size();
@@ -194,19 +219,26 @@ void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<floa
     float receiver_pixel_area = receiver_pixel_height * receiver_pixel_width;
 
     // abs_energy
-    float max_dif, sum_dif, rms_dif, ave_dif, R2, rms_per_area, total_energy_err, abs_energy_err;
-    float total_energy_ground_truth = 0.0f;
-    float total_energy_result = 0.0f;
-    float peak_ground_truth = 0.0;
-    float peak_result = 0.0f;
-    float peak_diff = 0.0f;
+    float max_dif; // 最大差
+    float sum_dif; // 所有像素差的和
+    float rms_dif; // 普通rms(与像素个数、定日镜大小 有关)
+    float ave_dif; // 平均差(sum_dif/像素个数)
+    float R2;       // 相关系数 R^2
+    float rms_per_area; // 相对rms(与像素个数、定日镜大小 无关)
+    float total_energy_err; // 接收器上总能量的差(与光斑的分布无关，只是单纯的总能量)
+    float abs_energy_err; // 所有像素差的和 * 像素的大小
+    float total_energy_ground_truth = 0.0f; // 最小像素时的总能量和
+    float total_energy_result = 0.0f;   // 像素缩放后的总能量和
+    float peak_ground_truth = 0.0;  // 最小像素时的 峰值
+    float peak_result = 0.0f;   // 像素缩放后的 峰值
+    float peak_diff = 0.0f;     // 峰值的差
     pair<int, int> peak_pos_ground_truth = pair<int, int>(-1, -1);
     pair<int, int> peak_pos_result = pair<int, int>(-1, -1);
     pair<int, int> peak_pos_theory = pair<int, int>(ground_truth_column / 2, ground_truth_row / 2);
-    float peak_shift_gt = 0.0f;
-    float peak_shift_c = 0.0f;
-    int pixel = 0;
-    float total_energy_err_relative = 0.0f;
+    float peak_shift_gt = 0.0f; // 峰值位置 的 偏移
+    float peak_shift_c = 0.0f;  // 像素缩放后
+    int pixel = 0;              // 像素个数
+    float total_energy_err_relative = 0.0f; // 相对的总能量误差(总能量差/总能量)
 
     for (int row = 0; row < ground_truth_row; row++) {
         for (int col = 0; col < ground_truth_column; col++) {
@@ -217,20 +249,29 @@ void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<floa
             }
         }
     }
+    fstream input_file(input_file_path, ios::in);
+    vector<vector<float>> origin;
+    if (!input_file.good()) {
+        cerr << "File " << input_file_path << " opened fail." << endl;
+        return;
+    }
+    origin = getDataMatrix(input_file);
+    input_file.close();
+
     for (int i = 0; i < pixel_sizes.size(); i++) {
         // cout << "HINT: pixel scale factor:" << pixel_scale_factors[i] << endl;
         // get max_rms and max_rms_per_area
         vector<vector<float>> result;
-        fstream input_file(input_file_path);
-        if (!input_file.good()) {
-            cerr << "File " << input_file_path << " opened fail." << endl;
-            return;
-        }
-        result = getDataMatrix(input_file);
+
+        cout << "(" << origin.size() << "*" << origin[0].size() << ")";
         // 得到放缩后的matrix
-        result = getSubSampledMatrix(result, pixel_scale_factors[i], pixel_scale_factors[i]);
+        result = getSubSampledMatrix(origin, pixel_scale_factors[i], pixel_scale_factors[i]);
+        // continue;
+        cout << "-- " << "*" << pixel_scale_factors[i] << " -->(" << result.size() << "*" << result[0].size() << ")" << endl;
+
         int r = 0;
         string str;
+
         max_dif = -FLT_MAX;
         sum_dif = 0.0f;
         rms_dif = 0.0f;
@@ -239,14 +280,18 @@ void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<floa
         R2 = 0.0f;
         total_energy_err = 0.0f;
         abs_energy_err = 0.0f;
+        total_energy_result = 0.0f;
         total_energy_err = 0.0f;
         total_energy_err_relative = 0.0f;
+        peak_diff = 0.0f;
+        peak_result = 0.0f;
 
         int result_row = result.size();
         int result_column = result[0].size();
         pixel = ground_truth_row * ground_truth_column;
         int factor_row = ground_truth_row / result_row;
         int factor_col = ground_truth_column / result_column;
+
 
 
         for (int row = 0; row < ground_truth_row; row++) {
@@ -261,6 +306,7 @@ void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<floa
                 rms_dif += (dif * dif);
                 max_dif = max(max_dif, dif);
                 sum_dif += dif;
+
                 abs_energy_err += (receiver_pixel_area * dif);
 
                 total_energy_result += receiver_pixel_area * result_val;
@@ -278,8 +324,10 @@ void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<floa
         R2 = getCoefficientOfDetermination(result, ground_truth);
         total_energy_err = abs(total_energy_result - total_energy_ground_truth);
         total_energy_err_relative = total_energy_err / total_energy_ground_truth;
+        peak_diff = abs(peak_result - peak_ground_truth);
+        // cout << "(" << result.size() << "*" << result[0].size() << ")" << endl;
+        // cout << peak_ground_truth << "<--->" << peak_result << " ->" << abs(peak_diff) << " rms_p:" << rms_per_area << endl;
 
-        peak_diff = peak_result - peak_ground_truth;
         float dx = (peak_pos_result.first - peak_pos_ground_truth.first) * receiver_pixel_width;
         float dy = (peak_pos_result.second - peak_pos_ground_truth.second) * receiver_pixel_height;
 
@@ -288,11 +336,7 @@ void done(float origin_pixel_size, vector<int>& pixel_scale_factors, vector<floa
         dy = (peak_pos_result.second - peak_pos_theory.second) * receiver_pixel_height;
         peak_shift_c = sqrt(dx * dx + dy * dy);
 
-        output_file
-            << "pixel_scale_factor,pixel_size,peak_dif,peak_shift_gt,peak_shift_c,rms,ave,pixel,r2,rms_per_area,total_energy_gt,total_energy_result,total_energy_err,total_energy_err_relative,abs_energy_err"
-            << endl;
-
-        output_file << pixel_scale_factors[i] << "," << pixel_sizes[i] << peak_diff << "," << peak_shift_gt << "," << peak_shift_c << "," << rms_dif
+        output_file << pixel_scale_factors[i] << "," << pixel_sizes[i] << "," << peak_diff << "," << peak_shift_gt << "," << peak_shift_c << "," << rms_dif
             << "," << ave_dif << "," << pixel << "," << R2 << "," << rms_per_area << "," << total_energy_ground_truth << "," << total_energy_result << "," << total_energy_err << "," << total_energy_err_relative << "," << abs_energy_err << endl;
         // output_file << pixel_scale_factors[i] << "," << pixel_sizes[i] << ", " << max_dif << ", " << sum_dif << ", " << rms_dif << ", " << ave_dif << ", "
         //     << pixel
@@ -335,7 +379,6 @@ void
 combineResults(vector<string>& input_file_lists, vector<string> titles, string target_title,
     string output_file_path) {
     int n = input_file_lists.size();
-    // cout << "n:" << n << endl;
     vector<stringstream> input_ss(n);
     int index = -1;
 
@@ -368,7 +411,7 @@ combineResults(vector<string>& input_file_lists, vector<string> titles, string t
             if (index == -1) {
                 return;
             } else {
-                cout << " index:" << index << " title:" << title_split[index];
+                cout << title_split[index] << ", ";
             }
             output_file << "pixel,";
             for (int j = 0; j < titles.size() - 1; j++) {
@@ -397,7 +440,7 @@ vector<vector<float>> getDataMatrix(fstream& file) {
     vector<vector<float>> result;
     stringstream ss;
     ss << file.rdbuf();
-    file.close();
+    // file.close();
     string str;
     while (getline(ss, str)) {
         string val_str;
