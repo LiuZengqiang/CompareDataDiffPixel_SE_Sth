@@ -1,3 +1,0 @@
-/home/sth/CLionProjects/CompareDataDiffPixel_SE_Sth/build/CMakeFiles/rebuild_cache.dir
-/home/sth/CLionProjects/CompareDataDiffPixel_SE_Sth/build/CMakeFiles/edit_cache.dir
-/home/sth/CLionProjects/CompareDataDiffPixel_SE_Sth/build/CMakeFiles/CompareDataDiffPixel_SE_Sth.dir

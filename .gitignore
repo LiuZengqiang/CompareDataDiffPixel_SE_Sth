@@ -1,6 +1,7 @@
 /build/
+/build/CMakeFiles/
 /Input/
 /Output/
 /cmake-build-debug/
 .idea/*
-temp.txt
+/temp/
