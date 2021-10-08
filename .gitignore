@@ -1,7 +1,6 @@
-/Output/*
-/build/*
-/Input/*
+/build/
+/Input/
 /Output/
 /cmake-build-debug/
-Output/out_1050.csv
 .idea/*
+temp.txt
